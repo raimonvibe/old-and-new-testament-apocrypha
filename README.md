@@ -1,3 +1,5 @@
+**🌐 Live:** [https://old-and-new-testament-apocrypha.vercel.app/](https://old-and-new-testament-apocrypha.vercel.app/)
+
 ![Apocrypha Reader](public/social-share.jpeg)
 
 # 📜 Old & New Testament Apocrypha Reader
@@ -77,7 +79,7 @@ node scripts/scrape-sacred-texts.js --category supplementary
 1. Push to GitHub (already at [raimonvibe/old-and-new-testament-apocrypha](https://github.com/raimonvibe/old-and-new-testament-apocrypha))
 2. Import the repo in [Vercel](https://vercel.com)
 3. Framework preset: **Next.js** — no env vars needed
-4. Update `metadataBase` in `app/layout.tsx` to your production URL
+4. Live at [old-and-new-testament-apocrypha.vercel.app](https://old-and-new-testament-apocrypha.vercel.app/) (override with `NEXT_PUBLIC_SITE_URL` if you use a custom domain)
 
 ---
 

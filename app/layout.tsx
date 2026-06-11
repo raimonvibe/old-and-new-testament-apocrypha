@@ -6,6 +6,8 @@ import ReadAloudToolbar from '@/components/ReadAloudToolbar'
 
 const themeInitScript = `(function(){try{var t=localStorage.getItem('apocrypha-theme');var d=t==='dark'||(!t&&window.matchMedia('(prefers-color-scheme: dark)').matches);document.documentElement.classList.toggle('dark',d);}catch(e){}})();`
 
+const SITE_URL = 'https://old-and-new-testament-apocrypha.vercel.app'
+
 export const metadata: Metadata = {
   title: 'Apocrypha Reader — Deuterocanonical, Pseudepigrapha & NT Apocrypha',
   description:
@@ -24,9 +26,10 @@ export const metadata: Metadata = {
   creator: 'raimonvibe',
   publisher: 'raimonvibe',
   metadataBase: new URL(
-    process.env.VERCEL_URL
-      ? `https://${process.env.VERCEL_URL}`
-      : 'http://localhost:3000',
+    process.env.NEXT_PUBLIC_SITE_URL ??
+      (process.env.NODE_ENV === 'development'
+        ? 'http://localhost:3000'
+        : SITE_URL),
   ),
   alternates: {
     canonical: '/',
@@ -35,13 +38,13 @@ export const metadata: Metadata = {
     title: 'Apocrypha Reader',
     description:
       'Read deuterocanonical books, OT pseudepigrapha, and NT apocrypha in a beautiful, modern interface.',
-    url: '/',
+    url: SITE_URL,
     siteName: 'Apocrypha Reader',
     images: [
       {
-        url: '/og-image.jpeg',
-        width: 1200,
-        height: 630,
+        url: '/social-share.jpeg',
+        width: 768,
+        height: 1152,
         alt: 'Apocrypha Reader — read apocryphal texts online',
       },
     ],
@@ -53,14 +56,15 @@ export const metadata: Metadata = {
     title: 'Apocrypha Reader',
     description:
       'Read deuterocanonical books, OT pseudepigrapha, and NT apocrypha in a beautiful, modern interface.',
-    images: ['/og-image.jpeg'],
+    images: ['/social-share.jpeg'],
   },
   icons: {
     icon: [
       { url: '/favicon.ico' },
-      { url: '/favicon.png', type: 'image/png' },
+      { url: '/favicon.png', type: 'image/png', sizes: '32x32' },
+      { url: '/icon-512.png', type: 'image/png', sizes: '512x512' },
     ],
-    apple: [{ url: '/apple-touch-icon.png' }],
+    apple: [{ url: '/apple-touch-icon.png', sizes: '180x180' }],
   },
   manifest: '/manifest.json',
   appleWebApp: {
