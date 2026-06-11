@@ -20,10 +20,14 @@ export const metadata: Metadata = {
     'Scripture',
     'Reading',
   ],
-  authors: [{ name: 'Apocrypha Reader' }],
-  creator: 'Apocrypha Reader',
-  publisher: 'Apocrypha Reader',
-  metadataBase: new URL('https://apocrypha-reader.vercel.app'),
+  authors: [{ name: 'raimonvibe', url: 'https://github.com/raimonvibe' }],
+  creator: 'raimonvibe',
+  publisher: 'raimonvibe',
+  metadataBase: new URL(
+    process.env.VERCEL_URL
+      ? `https://${process.env.VERCEL_URL}`
+      : 'http://localhost:3000',
+  ),
   alternates: {
     canonical: '/',
   },
@@ -31,11 +35,11 @@ export const metadata: Metadata = {
     title: 'Apocrypha Reader',
     description:
       'Read deuterocanonical books, OT pseudepigrapha, and NT apocrypha in a beautiful, modern interface.',
-    url: 'https://apocrypha-reader.vercel.app',
+    url: '/',
     siteName: 'Apocrypha Reader',
     images: [
       {
-        url: '/og-image.png',
+        url: '/og-image.jpeg',
         width: 1200,
         height: 630,
         alt: 'Apocrypha Reader — read apocryphal texts online',
@@ -49,7 +53,7 @@ export const metadata: Metadata = {
     title: 'Apocrypha Reader',
     description:
       'Read deuterocanonical books, OT pseudepigrapha, and NT apocrypha in a beautiful, modern interface.',
-    images: ['/og-image.png'],
+    images: ['/og-image.jpeg'],
   },
   icons: {
     icon: [

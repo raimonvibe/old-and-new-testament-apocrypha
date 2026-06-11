@@ -1,7 +1,7 @@
 {
-  "name": "Apocrypha Reader",
+  "name": "Apocrypha Reader — Old & New Testament Apocrypha",
   "short_name": "Apocrypha",
-  "description": "Read deuterocanonical books, OT pseudepigrapha, and NT apocrypha in a beautiful, modern interface",
+  "description": "Read deuterocanonical books, OT pseudepigrapha, and NT apocrypha. By raimonvibe.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#f5f1e8",

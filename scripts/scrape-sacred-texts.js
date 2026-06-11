@@ -13,6 +13,9 @@
 
 const fs = require('fs')
 const path = require('path')
+const zlib = require('zlib')
+const { promisify } = require('util')
+const gunzip = promisify(zlib.gunzip)
 
 const ARCHIVE_YEARS = ['2024', '2023', '2022']
 const DELAY_MS = 400
@@ -153,9 +156,23 @@ function isBoilerplateParagraph(text) {
   )
 }
 
+function parseJasherVerses(html) {
+  const verses = []
+  const pattern = /<p>\s*(\d+)\s+([\s\S]*?)(?=<p>|$)/gi
+  let match
+  while ((match = pattern.exec(html)) !== null) {
+    const text = stripTags(match[2])
+    if (text.length > 5) verses.push({ num: parseInt(match[1], 10), text })
+  }
+  return verses
+}
+
 function parseParagraphContent(html) {
   const apo = parseApoVerses(html)
   if (apo.length > 0) return apo
+
+  const jasher = parseJasherVerses(html)
+  if (jasher.length > 0) return jasher
 
   const body = html.match(/<body[^>]*>([\s\S]*)<\/body>/i)?.[1] ?? html
   const verses = []
@@ -176,6 +193,15 @@ function parseParagraphContent(html) {
   if (verses.length > 0) {
     return verses.sort((a, b) => a.num - b.num)
   }
+
+  const loosePattern = /<p>\s*([\s\S]*?)(?=<p>|<\/body>|$)/gi
+  let looseN = 1
+  while ((match = loosePattern.exec(body)) !== null) {
+    const text = stripTags(match[1])
+    if (isBoilerplateParagraph(text) || text.length < 40) continue
+    verses.push({ num: looseN++, text })
+  }
+  if (verses.length > 0) return verses
 
   const plainPattern = /<p[^>]*>([\s\S]*?)<\/p>/gi
   let n = 1
@@ -699,6 +725,291 @@ async function scrapeNtApocrypha({ dryRun = false } = {}) {
   return books
 }
 
+async function fetchGzipText(sitePath) {
+  const url = archiveUrl(sitePath)
+  const res = await fetch(url, {
+    headers: { 'User-Agent': 'ApocryphaReaderScraper/1.0 (educational)' },
+  })
+  if (!res.ok) throw new Error(`HTTP ${res.status} for ${url}`)
+  const buf = Buffer.from(await res.arrayBuffer())
+  const text = (await gunzip(buf)).toString('utf8')
+  return text
+}
+
+async function scrapeDidache({ dryRun = false } = {}) {
+  console.log('\n📖 Didache (from sacred-texts did.txt.gz)')
+  const text = await fetchGzipText('chr/did/did.txt.gz')
+  await sleep(DELAY_MS)
+
+  const start = text.indexOf('THE TEACHING OF THE TWELVE APOSTLES.')
+  const end = text.indexOf('Footnotes', start)
+  const body = text.slice(start, end > start ? end : undefined)
+  const parts = body.split(/\n\s*([IVXLC]+)\.\s+/)
+
+  const chapters = []
+  for (let i = 1; i < parts.length; i += 2) {
+    const roman = parts[i]
+    const content = parts[i + 1] ?? ''
+    const cleaned = content
+      .replace(/\[p\. \d+\]/g, '')
+      .replace(/\[\*\d+\]/g, '')
+      .replace(/\s+/g, ' ')
+      .trim()
+    if (!cleaned || cleaned.length < 30) continue
+
+    const num = chapters.length + 1
+    chapters.push({
+      number: String(num),
+      reference: `Didache ${roman}`,
+      verses: [{ num: 1, text: cleaned }],
+    })
+  }
+
+  console.log(`   ${chapters.length} chapter(s)`)
+  if (dryRun) return null
+
+  return makeBook({
+    id: 'DID',
+    name: 'Didache',
+    abbreviation: 'Didache',
+    category: 'nt-apocrypha',
+    collection: 'did',
+    chapters: chapters.map((ch) =>
+      makeChapter('DID', ch.number, ch.reference, ch.verses),
+    ),
+  })
+}
+
+async function scrapeLaurenceEnoch({ dryRun = false } = {}) {
+  console.log('\n📖 Book of Enoch the Prophet (Laurence)')
+  const files = ['bep02.htm', 'bep03.htm', 'bep04.htm', 'bep05.htm', 'bep06.htm', 'bep07.htm']
+  const labels = ['I–XX', 'XXI–XL', 'XLI–LX', 'LXI–LXXX', 'LXXXI–C', 'C–CV']
+  const chapters = []
+
+  for (let i = 0; i < files.length; i++) {
+    process.stdout.write(`   section ${i + 1}...`)
+    if (dryRun) {
+      console.log(' (dry-run)')
+      continue
+    }
+    const html = await fetchPage(`bib/bep/${files[i]}`)
+    await sleep(DELAY_MS)
+    const verses = parseParagraphContent(html)
+    if (verses.length === 0) {
+      console.log(' ⚠ empty')
+      continue
+    }
+    chapters.push(
+      makeChapter('BEP', String(i + 1), `Enoch (Laurence) ${labels[i]}`, verses),
+    )
+    console.log(` ✓ ${verses.length} paragraphs`)
+  }
+
+  if (dryRun || chapters.length === 0) return null
+  return makeBook({
+    id: 'BEP',
+    name: 'Book of Enoch the Prophet',
+    abbreviation: 'Enoch (Laurence)',
+    category: 'ot-pseudepigrapha',
+    collection: 'bep',
+    chapters,
+  })
+}
+
+async function scrapeSinglePageBook({
+  sitePath,
+  id,
+  name,
+  abbreviation,
+  category,
+  collection,
+  dryRun,
+}) {
+  console.log(`\n📖 ${name}`)
+  if (dryRun) return null
+
+  const html = await fetchPage(sitePath)
+  await sleep(DELAY_MS)
+  const verses = parseParagraphContent(html)
+  console.log(`   ${verses.length} paragraph(s)`)
+  if (verses.length === 0) return null
+
+  return makeBook({
+    id,
+    name,
+    abbreviation,
+    category,
+    collection,
+    chapters: [makeChapter(id, '1', name, verses)],
+  })
+}
+
+async function scrapeJasher({ dryRun = false } = {}) {
+  console.log('\n📖 Book of Jasher')
+  const indexHtml = await fetchPage('chr/apo/jasher/index.htm')
+  await sleep(DELAY_MS)
+
+  const files = [...indexHtml.matchAll(/href="(\d+)\.htm"/gi)]
+    .map((m) => `${m[1]}.htm`)
+    .filter((f, i, arr) => arr.indexOf(f) === i)
+    .sort((a, b) => parseInt(a, 10) - parseInt(b, 10))
+
+  console.log(`   ${files.length} chapter(s)`)
+  const chapters = []
+
+  for (const file of files) {
+    const chapterNum = file.replace('.htm', '')
+    process.stdout.write(`   ch ${chapterNum}...`)
+    if (dryRun) {
+      console.log(' (dry-run)')
+      continue
+    }
+    const html = await fetchPage(`chr/apo/jasher/${file}`)
+    await sleep(DELAY_MS)
+    const verses = parseParagraphContent(html)
+    if (verses.length === 0) {
+      console.log(' ⚠ empty')
+      continue
+    }
+    chapters.push(makeChapter('JAS', chapterNum, `Jasher ${chapterNum}`, verses))
+    console.log(` ✓ ${verses.length} verses`)
+  }
+
+  if (dryRun || chapters.length === 0) return null
+  return makeBook({
+    id: 'JAS',
+    name: 'Book of Jasher',
+    abbreviation: 'Jasher',
+    category: 'ot-pseudepigrapha',
+    collection: 'jasher',
+    chapters,
+  })
+}
+
+async function scrapeSibyllineOracles({ dryRun = false } = {}) {
+  console.log('\n📖 Sibylline Oracles')
+  const files = Array.from({ length: 12 }, (_, i) => `sib${String(i + 3).padStart(2, '0')}.htm`)
+  const chapters = []
+
+  for (let i = 0; i < files.length; i++) {
+    process.stdout.write(`   book ${i + 1}...`)
+    if (dryRun) {
+      console.log(' (dry-run)')
+      continue
+    }
+    const html = await fetchPage(`cla/sib/${files[i]}`)
+    await sleep(DELAY_MS)
+    const verses = parseParagraphContent(html)
+    if (verses.length === 0) {
+      console.log(' ⚠ empty')
+      continue
+    }
+    chapters.push(makeChapter('SIB', String(i + 1), `Sibylline Oracles ${i + 1}`, verses))
+    console.log(` ✓ ${verses.length} paragraphs`)
+  }
+
+  if (dryRun || chapters.length === 0) return null
+  return makeBook({
+    id: 'SIB',
+    name: 'Sibylline Oracles',
+    abbreviation: 'Sibyllines',
+    category: 'ot-pseudepigrapha',
+    collection: 'sib',
+    chapters,
+  })
+}
+
+async function scrapeChroniclesOfJerahmeel({ dryRun = false } = {}) {
+  console.log('\n📖 Chronicles of Jerahmeel')
+  const indexHtml = await fetchPage('bib/coj/index.htm')
+  await sleep(DELAY_MS)
+
+  const files = [...indexHtml.matchAll(/href="(coj\d+\.htm)"/gi)]
+    .map((m) => m[1].toLowerCase())
+    .filter((f, i, arr) => arr.indexOf(f) === i)
+    .filter((f) => {
+      const n = parseInt(f.replace(/\D/g, ''), 10)
+      return n >= 5
+    })
+    .sort((a, b) => parseInt(a.replace(/\D/g, ''), 10) - parseInt(b.replace(/\D/g, ''), 10))
+
+  console.log(`   ${files.length} section(s)`)
+  const chapters = []
+
+  for (let i = 0; i < files.length; i++) {
+    const file = files[i]
+    const chapterNum = String(i + 1)
+    process.stdout.write(`   ch ${chapterNum}...`)
+    if (dryRun) {
+      console.log(' (dry-run)')
+      continue
+    }
+    const html = await fetchPage(`bib/coj/${file}`)
+    await sleep(DELAY_MS)
+    const verses = parseParagraphContent(html)
+    if (verses.length === 0) {
+      console.log(' ⚠ empty')
+      continue
+    }
+    const title = parseChapterTitle(html) ?? `Section ${chapterNum}`
+    chapters.push(makeChapter('COJ', chapterNum, `Jerahmeel — ${title}`, verses))
+    console.log(` ✓ ${verses.length} paragraphs`)
+  }
+
+  if (dryRun || chapters.length === 0) return null
+  return makeBook({
+    id: 'COJ',
+    name: 'Chronicles of Jerahmeel',
+    abbreviation: 'Jerahmeel',
+    category: 'ot-pseudepigrapha',
+    collection: 'coj',
+    chapters,
+  })
+}
+
+async function scrapeSupplementary({ dryRun = false } = {}) {
+  const books = []
+
+  const did = await scrapeDidache({ dryRun })
+  if (did) books.push(did)
+
+  const bep = await scrapeLaurenceEnoch({ dryRun })
+  if (bep) books.push(bep)
+
+  const adam = await scrapeSinglePageBook({
+    sitePath: 'chr/apo/adamnev.htm',
+    id: 'ADNEV',
+    name: 'Life of Adam and Eve (Vita Adae)',
+    abbreviation: 'Vita Adae',
+    category: 'ot-pseudepigrapha',
+    collection: 'adamnev',
+    dryRun,
+  })
+  if (adam) books.push(adam)
+
+  const slav = await scrapeSinglePageBook({
+    sitePath: 'chr/apo/slanev.htm',
+    id: 'SLADV',
+    name: 'Slavonic Life of Adam and Eve',
+    abbreviation: 'Slavonic Adam',
+    category: 'ot-pseudepigrapha',
+    collection: 'slanev',
+    dryRun,
+  })
+  if (slav) books.push(slav)
+
+  const jas = await scrapeJasher({ dryRun })
+  if (jas) books.push(jas)
+
+  const sib = await scrapeSibyllineOracles({ dryRun })
+  if (sib) books.push(sib)
+
+  const coj = await scrapeChroniclesOfJerahmeel({ dryRun })
+  if (coj) books.push(coj)
+
+  return books
+}
+
 function parseArgs() {
   const args = process.argv.slice(2)
   const opts = { category: null, book: null, dryRun: false }
@@ -730,7 +1041,17 @@ function mergeBooks(existing, scraped, { replaceCategories = [], replaceIds = []
     (b) =>
       !replaceCategories.includes(b.category) && !idSet.has(b.id),
   )
-  return [...kept, ...scraped].sort(
+  return sortBooks([...kept, ...scraped])
+}
+
+function mergeBooksById(existing, scraped) {
+  const scrapedIds = new Set(scraped.map((b) => b.id))
+  const kept = existing.books.filter((b) => !scrapedIds.has(b.id))
+  return sortBooks([...kept, ...scraped])
+}
+
+function sortBooks(books) {
+  return books.sort(
     (a, b) =>
       CATEGORY_ORDER.indexOf(a.category) - CATEGORY_ORDER.indexOf(b.category),
   )
@@ -744,6 +1065,7 @@ async function main() {
   --category deuterocanonical
   --category ot-pseudepigrapha
   --category nt-apocrypha
+  --category supplementary
   --book <slug>   (deuterocanonical only)
   --dry-run`)
     process.exit(1)
@@ -776,6 +1098,9 @@ async function main() {
   } else if (opts.category === 'nt-apocrypha') {
     scraped = await scrapeNtApocrypha({ dryRun: opts.dryRun })
     mergeOpts = { replaceCategories: ['nt-apocrypha'] }
+  } else if (opts.category === 'supplementary') {
+    scraped = await scrapeSupplementary({ dryRun: opts.dryRun })
+    mergeOpts = { supplementary: true }
   } else {
     console.error(`Unknown category: ${opts.category}`)
     process.exit(1)
@@ -787,7 +1112,9 @@ async function main() {
   }
 
   const existing = loadExistingData()
-  const books = mergeBooks(existing, scraped, mergeOpts)
+  const books = mergeOpts.supplementary
+    ? mergeBooksById(existing, scraped)
+    : mergeBooks(existing, scraped, mergeOpts)
 
   const output = {
     bibleName: existing.bibleName,

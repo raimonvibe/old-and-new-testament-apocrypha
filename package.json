@@ -8,7 +8,8 @@
     "lint": "next lint",
     "scrape:deuterocanonical": "node scripts/scrape-sacred-texts.js --category deuterocanonical",
     "scrape:ot-pseudepigrapha": "node scripts/scrape-sacred-texts.js --category ot-pseudepigrapha",
-    "scrape:nt-apocrypha": "node scripts/scrape-sacred-texts.js --category nt-apocrypha"
+    "scrape:nt-apocrypha": "node scripts/scrape-sacred-texts.js --category nt-apocrypha",
+    "scrape:supplementary": "node scripts/scrape-sacred-texts.js --category supplementary"
   },
   "dependencies": {
     "@types/node": "^24.10.0",
