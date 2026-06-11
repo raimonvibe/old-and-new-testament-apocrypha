@@ -5,7 +5,8 @@ import BookSelector from '@/components/BookSelector'
 import ChapterSelector from '@/components/ChapterSelector'
 import BibleReader from '@/components/BibleReader'
 import ThemeToggle from '@/components/ThemeToggle'
-import { BookMarked, Heart } from 'lucide-react'
+import SiteFooter from '@/components/SiteFooter'
+import { BookMarked } from 'lucide-react'
 
 interface Chapter {
   id: string
@@ -215,33 +216,13 @@ export default function Home() {
             />
           )}
         </div>
-
-        <footer
-          data-read-aloud-ignore
-          className="text-center text-beige-600 dark:text-brown-400 font-sans text-sm md:text-base py-8"
-        >
-          <div className="flex items-center justify-center gap-2 mb-2">
-            <span>Made with</span>
-            <Heart className="w-4 h-4 fill-beige-600 dark:fill-brown-400" />
-            <span>for readers of sacred texts</span>
-          </div>
-          <p className="text-beige-500 dark:text-brown-500 text-xs md:text-sm">
-            {apocryphaData.bibleName} • {apocryphaData.books.length} Books •{' '}
-            {totalChapters} Chapters
-          </p>
-          <p className="text-beige-500 dark:text-brown-500 text-xs mt-2">
-            Texts from{' '}
-            <a
-              href="https://www.sacred-texts.com/chr/apo/index.htm"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="underline hover:text-beige-700 dark:hover:text-brown-300"
-            >
-              sacred-texts.com
-            </a>
-          </p>
-        </footer>
       </div>
+
+      <SiteFooter
+        bibleName={apocryphaData.bibleName}
+        bookCount={apocryphaData.books.length}
+        chapterCount={totalChapters}
+      />
     </div>
   )
 }
