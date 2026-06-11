@@ -27,13 +27,6 @@ const SOCIAL_LINKS = [
       'bg-brown-800 hover:bg-violet-600 dark:bg-violet-900/90 dark:hover:bg-violet-500',
   },
   {
-    href: 'https://www.instagram.com/raimonvibe/',
-    label: 'Instagram',
-    icon: 'fab fa-instagram',
-    className:
-      'bg-brown-800 hover:bg-pink-600 dark:bg-pink-900/90 dark:hover:bg-pink-500',
-  },
-  {
     href: 'https://www.youtube.com/channel/UCDGDNuYb2b2Ets9CYCNVbuA/videos/',
     label: 'YouTube',
     icon: 'fab fa-youtube',
@@ -41,11 +34,46 @@ const SOCIAL_LINKS = [
       'bg-brown-800 hover:bg-red-600 dark:bg-red-900/90 dark:hover:bg-red-500',
   },
   {
+    href: 'https://www.tiktok.com/@raimonvibe/',
+    label: 'TikTok',
+    icon: 'fab fa-tiktok',
+    className:
+      'bg-brown-800 hover:bg-neutral-900 dark:bg-neutral-700 dark:hover:bg-neutral-500',
+  },
+  {
+    href: 'https://www.instagram.com/raimonvibe/',
+    label: 'Instagram',
+    icon: 'fab fa-instagram',
+    className:
+      'bg-brown-800 hover:bg-pink-600 dark:bg-pink-900/90 dark:hover:bg-pink-500',
+  },
+  {
+    href: 'https://medium.com/@raimonvibe/',
+    label: 'Medium',
+    icon: 'fab fa-medium',
+    className:
+      'bg-brown-800 hover:bg-green-600 dark:bg-green-900/90 dark:hover:bg-green-500',
+  },
+  {
     href: 'https://github.com/raimonvibe/',
     label: 'GitHub',
     icon: 'fab fa-github',
     className:
       'bg-brown-800 hover:bg-neutral-700 dark:bg-neutral-600 dark:hover:bg-neutral-300',
+  },
+  {
+    href: 'https://www.linkedin.com/in/raimonvibe/',
+    label: 'LinkedIn',
+    icon: 'fab fa-linkedin-in',
+    className:
+      'bg-brown-800 hover:bg-blue-600 dark:bg-blue-900/90 dark:hover:bg-blue-500',
+  },
+  {
+    href: 'https://www.facebook.com/profile.php?id=61563450007849',
+    label: 'Facebook',
+    icon: 'fab fa-facebook-f',
+    className:
+      'bg-brown-800 hover:bg-blue-700 dark:bg-blue-950/90 dark:hover:bg-blue-600',
   },
 ] as const
 
@@ -87,7 +115,7 @@ export default function SiteFooter({
             <h5 className="font-display font-semibold text-lg text-beige-900 dark:text-brown-50 mb-4">
               Connect with Raimon
             </h5>
-            <ul className="grid grid-cols-3 sm:grid-cols-6 gap-3 list-none p-0 m-0 max-w-sm mx-auto md:mx-0 md:max-w-none">
+            <ul className="grid grid-cols-4 sm:grid-cols-5 gap-3 list-none p-0 m-0 max-w-xs sm:max-w-md mx-auto md:mx-0 md:max-w-none">
               {SOCIAL_LINKS.map((link) => (
                 <li key={link.label}>
                   <a
