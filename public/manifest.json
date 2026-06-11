@@ -1,0 +1,26 @@
+{
+  "name": "Apocrypha Reader",
+  "short_name": "Apocrypha",
+  "description": "Read deuterocanonical books, OT pseudepigrapha, and NT apocrypha in a beautiful, modern interface",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f5f1e8",
+  "theme_color": "#7d6e56",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/favicon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/apple-touch-icon.png",
+      "sizes": "180x180",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ],
+  "categories": ["education", "books", "lifestyle"],
+  "lang": "en-US"
+}
