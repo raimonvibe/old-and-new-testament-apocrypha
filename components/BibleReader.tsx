@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect, useRef } from 'react'
 import { ChevronLeft, ChevronRight, Eye, EyeOff, Home } from 'lucide-react'
 
 interface Chapter {
@@ -13,6 +13,7 @@ interface Chapter {
 interface BibleReaderProps {
   bookName: string
   chapter: Chapter
+  highlightVerse?: string | null
   onBack: () => void
   onPrevChapter?: () => void
   onNextChapter?: () => void
@@ -37,19 +38,22 @@ function formatChapterHtml(
   reference: string,
   bookName: string,
   chapterNumber: string,
+  highlightVerse?: string | null,
 ): string {
   const parts = content.split(VERSE_MARKER)
-  const verses: string[] = []
+  const verses: Array<{ html: string; verseNum: string | null }> = []
   let current = ''
+  let currentVerseNum: string | null = null
 
   for (const part of parts) {
     if (!part) continue
     if (VERSE_MARKER.test(part)) {
       if (current.trim()) {
-        verses.push(current.trim())
+        verses.push({ html: current.trim(), verseNum: currentVerseNum })
         current = ''
       }
-      const num = part.match(/\[(\d+)\]/)?.[1]
+      const num = part.match(/\[(\d+)\]/)?.[1] ?? null
+      currentVerseNum = num
       if (showVerseNumbers && num) {
         current += `<sup class="verse-num">[${num}]</sup> `
       }
@@ -58,19 +62,35 @@ function formatChapterHtml(
     }
   }
 
-  if (current.trim()) verses.push(current.trim())
+  if (current.trim()) {
+    verses.push({ html: current.trim(), verseNum: currentVerseNum })
+  }
 
   if (verses.length === 0) {
     return `<p class="verse">${escapeHtml(content)}</p>`
   }
 
   const intro = `<p class="verse">${escapeHtml(reference)}. ${escapeHtml(bookName)}, chapter ${escapeHtml(chapterNumber)}.</p>`
-  return intro + verses.map((text) => `<p class="verse">${text}</p>`).join('')
+  return (
+    intro +
+    verses
+      .map(({ html, verseNum }) => {
+        const isHighlighted =
+          highlightVerse && verseNum === highlightVerse
+        const className = isHighlighted
+          ? 'verse verse-search-target'
+          : 'verse'
+        const idAttr = verseNum ? ` id="verse-${verseNum}"` : ''
+        return `<p class="${className}"${idAttr}>${html}</p>`
+      })
+      .join('')
+  )
 }
 
 export default function BibleReader({
   bookName,
   chapter,
+  highlightVerse,
   onBack,
   onPrevChapter,
   onNextChapter,
@@ -79,6 +99,7 @@ export default function BibleReader({
   onBackToBooks,
 }: BibleReaderProps) {
   const [showVerseNumbers, setShowVerseNumbers] = useState(true)
+  const contentRef = useRef<HTMLDivElement>(null)
 
   const processedContent = useMemo(
     () =>
@@ -88,9 +109,29 @@ export default function BibleReader({
         chapter.reference,
         bookName,
         chapter.number,
+        highlightVerse,
       ),
-    [chapter.content, showVerseNumbers, chapter.reference, chapter.number, bookName],
+    [
+      chapter.content,
+      showVerseNumbers,
+      chapter.reference,
+      chapter.number,
+      bookName,
+      highlightVerse,
+    ],
   )
+
+  useEffect(() => {
+    if (!highlightVerse || !contentRef.current) return
+    const target = contentRef.current.querySelector('#verse-' + highlightVerse)
+    if (!target) return
+
+    const timer = window.setTimeout(() => {
+      target.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    }, 100)
+
+    return () => window.clearTimeout(timer)
+  }, [highlightVerse, chapter.id, processedContent])
 
   return (
     <article className="card-surface p-4 md:p-6 lg:p-10">
@@ -182,6 +223,7 @@ export default function BibleReader({
 
       <div className="prose max-w-none mb-8">
         <div
+          ref={contentRef}
           className="text-beige-900 dark:text-brown-100 leading-relaxed text-base md:text-lg lg:text-xl"
           dangerouslySetInnerHTML={{ __html: processedContent }}
           aria-live="polite"

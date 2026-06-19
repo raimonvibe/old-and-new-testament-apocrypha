@@ -1,40 +1,23 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import BookSelector from '@/components/BookSelector'
 import ChapterSelector from '@/components/ChapterSelector'
 import BibleReader from '@/components/BibleReader'
 import ThemeToggle from '@/components/ThemeToggle'
 import SiteFooter from '@/components/SiteFooter'
+import SearchDialog, { SearchTrigger } from '@/components/SearchDialog'
+import type { ApocryphaData } from '@/lib/apocryphaTypes'
+import type { SearchResult } from '@/lib/search'
 import { BookMarked } from 'lucide-react'
-
-interface Chapter {
-  id: string
-  number: string
-  reference: string
-  content: string
-}
-
-interface Book {
-  id: string
-  name: string
-  abbreviation: string
-  category: 'deuterocanonical' | 'ot-pseudepigrapha' | 'nt-apocrypha'
-  collection?: string
-  chapters: Chapter[]
-}
-
-interface ApocryphaData {
-  bibleName: string
-  bibleId: string
-  books: Book[]
-}
 
 export default function Home() {
   const [apocryphaData, setApocryphaData] = useState<ApocryphaData | null>(null)
   const [selectedBookId, setSelectedBookId] = useState<string | null>(null)
   const [selectedChapterId, setSelectedChapterId] = useState<string | null>(null)
+  const [highlightVerse, setHighlightVerse] = useState<string | null>(null)
   const [view, setView] = useState<'books' | 'chapters' | 'reader'>('books')
+  const [searchOpen, setSearchOpen] = useState(false)
 
   useEffect(() => {
     fetch('/api/apocrypha-data')
@@ -74,24 +57,47 @@ export default function Home() {
   const handleSelectBook = (bookId: string) => {
     setSelectedBookId(bookId)
     setSelectedChapterId(null)
+    setHighlightVerse(null)
     setView('chapters')
   }
 
   const handleSelectChapter = (chapterId: string) => {
     setSelectedChapterId(chapterId)
+    setHighlightVerse(null)
     setView('reader')
   }
 
   const handleBackToBooks = () => {
     setSelectedBookId(null)
     setSelectedChapterId(null)
+    setHighlightVerse(null)
     setView('books')
   }
 
   const handleBackToChapters = () => {
     setSelectedChapterId(null)
+    setHighlightVerse(null)
     setView('chapters')
   }
+
+  const handleSearchResult = useCallback((result: SearchResult) => {
+    setSelectedBookId(result.bookId)
+    setSelectedChapterId(result.chapterId)
+    setHighlightVerse(result.verseNumber ?? null)
+    setView(result.type === 'book' ? 'chapters' : 'reader')
+  }, [])
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k') {
+        event.preventDefault()
+        setSearchOpen(true)
+      }
+    }
+
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [])
 
   const handlePrevChapter = () => {
     if (!selectedBook || !selectedChapterId || !apocryphaData) return
@@ -101,6 +107,7 @@ export default function Home() {
 
     if (currentChapterIndex > 0) {
       setSelectedChapterId(selectedBook.chapters[currentChapterIndex - 1].id)
+      setHighlightVerse(null)
     } else {
       const currentBookIndex = apocryphaData.books.findIndex(
         (b) => b.id === selectedBook.id,
@@ -109,6 +116,7 @@ export default function Home() {
         const prevBook = apocryphaData.books[currentBookIndex - 1]
         setSelectedBookId(prevBook.id)
         setSelectedChapterId(prevBook.chapters[prevBook.chapters.length - 1].id)
+        setHighlightVerse(null)
       }
     }
   }
@@ -121,6 +129,7 @@ export default function Home() {
 
     if (currentChapterIndex < selectedBook.chapters.length - 1) {
       setSelectedChapterId(selectedBook.chapters[currentChapterIndex + 1].id)
+      setHighlightVerse(null)
     } else {
       const currentBookIndex = apocryphaData.books.findIndex(
         (b) => b.id === selectedBook.id,
@@ -129,6 +138,7 @@ export default function Home() {
         const nextBook = apocryphaData.books[currentBookIndex + 1]
         setSelectedBookId(nextBook.id)
         setSelectedChapterId(nextBook.chapters[0].id)
+        setHighlightVerse(null)
       }
     }
   }
@@ -166,9 +176,20 @@ export default function Home() {
 
   return (
     <div className="min-h-screen py-6 md:py-10 px-4 md:px-6 lg:px-8">
-      <div className="fixed top-4 right-4 z-40" data-read-aloud-ignore>
+      <div
+        className="fixed top-4 right-4 z-40 flex items-center gap-2"
+        data-read-aloud-ignore
+      >
+        <SearchTrigger onClick={() => setSearchOpen(true)} />
         <ThemeToggle />
       </div>
+
+      <SearchDialog
+        books={apocryphaData.books}
+        open={searchOpen}
+        onOpenChange={setSearchOpen}
+        onSelectResult={handleSearchResult}
+      />
 
       <div className="max-w-7xl mx-auto">
         <header data-read-aloud-ignore className="text-center mb-8 md:mb-12">
@@ -207,6 +228,7 @@ export default function Home() {
             <BibleReader
               bookName={selectedBook.name}
               chapter={selectedChapter}
+              highlightVerse={highlightVerse}
               onBack={handleBackToChapters}
               onBackToBooks={handleBackToBooks}
               onPrevChapter={handlePrevChapter}
