@@ -32,6 +32,25 @@ export default function Home() {
     window.dispatchEvent(new CustomEvent('read-aloud-stop'))
   }, [readAloudStopKey])
 
+  const handleSearchResult = useCallback((result: SearchResult) => {
+    setSelectedBookId(result.bookId)
+    setSelectedChapterId(result.chapterId)
+    setHighlightVerse(result.verseNumber ?? null)
+    setView(result.type === 'book' ? 'chapters' : 'reader')
+  }, [])
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k') {
+        event.preventDefault()
+        setSearchOpen(true)
+      }
+    }
+
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [])
+
   if (!apocryphaData) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -79,25 +98,6 @@ export default function Home() {
     setHighlightVerse(null)
     setView('chapters')
   }
-
-  const handleSearchResult = useCallback((result: SearchResult) => {
-    setSelectedBookId(result.bookId)
-    setSelectedChapterId(result.chapterId)
-    setHighlightVerse(result.verseNumber ?? null)
-    setView(result.type === 'book' ? 'chapters' : 'reader')
-  }, [])
-
-  useEffect(() => {
-    const onKeyDown = (event: KeyboardEvent) => {
-      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k') {
-        event.preventDefault()
-        setSearchOpen(true)
-      }
-    }
-
-    window.addEventListener('keydown', onKeyDown)
-    return () => window.removeEventListener('keydown', onKeyDown)
-  }, [])
 
   const handlePrevChapter = () => {
     if (!selectedBook || !selectedChapterId || !apocryphaData) return
