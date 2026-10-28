@@ -1,3 +1,4 @@
+import { genuineVoices } from './noveltyVoices'
 export type ReadChunk = {
   index: number
   text: string
@@ -192,6 +193,8 @@ export function highlightChunk(element: HTMLElement) {
 }
 
 export function filterVoices(voices: SpeechSynthesisVoice[]): SpeechSynthesisVoice[] {
+  // Novelty voices never reach the picker or the default, not even as a fallback.
+  voices = genuineVoices(voices)
   const english = voices.filter((v) => v.lang.startsWith('en'))
   const pool = english.length > 0 ? english : voices
 
